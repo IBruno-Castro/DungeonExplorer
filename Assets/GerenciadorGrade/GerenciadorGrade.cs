@@ -93,11 +93,8 @@ public class GerenciadorGrade : MonoBehaviour {
         }
     }
 
-    public void MudarTile(Vector2 posicao, GameObject tile) {
-        Vector2 index = GetIndex(posicao);
-
-        int x = (int) index.x;
-        int y = (int) index.y;
+    public void MudarTile(int x, int y, GameObject tile) {
+        Vector2 posicao = GetPosicao(x, y);
         
         Destroy(instancias[x,y]);
         instancias[x,y] = Instantiate(tile, posicao, Quaternion.identity);
