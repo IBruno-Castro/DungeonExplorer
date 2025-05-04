@@ -5,13 +5,12 @@ using Unity.VisualScripting;
 using UnityEngine;
 
 public class Resolvedor : MonoBehaviour {
-    public GerenciadorGrade gerenciador;
     public Color corAndado;
     public float velocidade = 2f;
     private Coroutine moverPorCaminhoCoroutine;
 
     public void ResolverLabirinto() {
-        Node[,] grade = gerenciador.GetGrade(); // Pega a grade do problema
+        Node[,] grade = GerenciadorGrade.Instance.GetGrade(); // Pega a grade do problema
 
 
     }
@@ -51,7 +50,7 @@ public class Resolvedor : MonoBehaviour {
     public void ResetarPosicaoResolvedor() {
         StopAllCoroutines();
         moverPorCaminhoCoroutine = null;
-        transform.position = (Vector3)gerenciador.posicaoInicio + gerenciador.transform.position;
+        transform.position = (Vector3) GerenciadorGrade.Instance.posicaoInicio + GerenciadorGrade.Instance.transform.position;
     }
 
     private IEnumerator MoverPorCaminhoCoroutine(List<Node> caminho) {

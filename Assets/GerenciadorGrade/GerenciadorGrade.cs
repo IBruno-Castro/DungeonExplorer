@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+// Tiles gerados por probabilidade
 [System.Serializable]
 public class TileData {
     [SerializeField]
@@ -10,6 +11,7 @@ public class TileData {
     public float probabilidade = 0f;
 }
 
+// Tiles com número fixo de aparições
 [System.Serializable]
 public class TilePadraoData {
     [SerializeField]
@@ -19,51 +21,114 @@ public class TilePadraoData {
 }
 
 public class GerenciadorGrade : MonoBehaviour {
+    public static GerenciadorGrade Instance { get; private set; }
+
     [SerializeField]
     private int largura;
     [SerializeField]
     private int altura;
     [SerializeField]
     private float tamanhoUnidade = 1f;
+    private float larguraOffset => (largura * tamanhoUnidade / -2) + tamanhoUnidade / 2;
+    private float alturaOffset => (altura * tamanhoUnidade / -2) + tamanhoUnidade / 2;
 
     [SerializeField]
     private List<TileData> tiles = new();
     [SerializeField]
     private List<TilePadraoData> tilesPadrao = new();
-
-    private Node[,] grade;
-    public Vector2 posicaoInicio { get; private set; } // Get publico, mas set privado
-    public Vector2 posicaoDestino { get; private set; } // Get publico, mas set privado
-
+    // Soma das probabilidades de cada tipo de tile
     private float maxProbabilidade = 0f;
 
+    private GameObject[,] moldeGrade;
+    private GameObject[,] instancias;
+    public Node[,] grade { get; private set; }
+
+    public Vector2 posicaoInicio { get; private set; } // Get publico, mas set privado
+
+    [SerializeField]
+    private int seed;
+
+    void Awake() {
+        if (Instance != null) {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
     void Start() {
+        instancias = new GameObject[largura, altura];
+        grade = new Node[largura, altura];
+
+        Random.InitState(seed == 0 ? System.DateTime.Now.GetHashCode() : seed);
         maxProbabilidade = tiles.Aggregate(0f, (acc, tile) => acc + tile.probabilidade);
+        
         GerarGrade();
     }
 
     public void GerarGrade() {
-        grade = new Node[largura, altura];
+        moldeGrade = new GameObject[largura, altura];
+    
+        GerarTilesPadrao();
+        GerarTilesAleatorios();
 
-        GerarTilesPadrao(grade);
+        SetPosicaoInicio();
+
+        ResetGrade();
+    }
+
+    public void ResetGrade() {
+        LimparGrade();
 
         for (int x = 0; x < largura; x++) {
             for (int y = 0; y < altura; y++) {
-                if (grade[x,y]) continue;
+                Vector2 posicao = GetPosicao(x, y);
+                
+                GameObject instancia = Instantiate(moldeGrade[x,y], posicao, Quaternion.identity);
+                instancias[x,y] = instancia;
 
-                Vector2 posicao = new(x, -y);
-
-                GameObject tile = GetTile(posicao);
-
-                grade[x, y] = tile.GetComponent<Node>();
-                grade[x, y].posicao = posicao;
+                grade[x,y] = instancia.GetComponent<Node>();
+                grade[x,y].posicao = posicao;
             }
         }
     }
 
-    private void GerarTilesPadrao(Node[,] grade) {
-        int linhas = grade.GetLength(0);
-        int colunas = grade.GetLength(0);
+    public void MudarTile(Vector2 posicao, GameObject tile) {
+        Vector2 index = GetIndex(posicao);
+
+        int x = (int) index.x;
+        int y = (int) index.y;
+        
+        Destroy(instancias[x,y]);
+        instancias[x,y] = Instantiate(tile, posicao, Quaternion.identity);
+        
+        grade[x,y] = instancias[x,y].GetComponent<Node>();
+        grade[x,y].posicao = posicao;
+    }
+
+    private void SetPosicaoInicio() {
+        for (int x = 0; x < largura; x++) {
+            for (int y = 0; y < altura; y++) {
+                if (moldeGrade[x,y].GetComponent<Node>().ehAndavel) {
+                    posicaoInicio = GetPosicao(x, y);
+                    return;
+                }
+            }
+        }
+    }
+
+    private void LimparGrade() {
+        for (int x = 0; x < largura; x++) {
+            for (int y = 0; y < altura; y++) {
+                if (instancias[x,y])
+                    Destroy(instancias[x,y]);                
+            }
+        }
+    }
+
+    private void GerarTilesPadrao() {
+        int linhas = moldeGrade.GetLength(0);
+        int colunas = moldeGrade.GetLength(0);
 
         foreach (var tile in tilesPadrao) {
             int quantidadeSetada = 0;
@@ -72,37 +137,33 @@ public class GerenciadorGrade : MonoBehaviour {
                 int x = Random.Range(0, linhas);
                 int y = Random.Range(0, colunas);
                 
-                if (!grade[x,y]) {
-                    Vector2 posicao = new(x, -y);
-
-                    GameObject _tile = Instantiate(tile.tile, posicao, Quaternion.identity);
-
-                    grade[x, y] = _tile.GetComponent<Node>();
-                    grade[x, y].posicao = posicao;
-            
+                if (!moldeGrade[x,y]) {
+                    moldeGrade[x,y] = tile.tile;
                     quantidadeSetada += 1;
                 }
             }
         }
     }
 
-    private GameObject GetTile(Vector2 posicao) {
-        GameObject prefab;
-        
+    private void GerarTilesAleatorios() {
+        for (int x = 0; x < largura; x++) {
+            for (int y = 0; y < altura; y++) {
+                if (moldeGrade[x,y]) continue;
+
+                moldeGrade[x,y] = GetTilePrefab();
+            }
+        }
+    }
+
+    private GameObject GetTilePrefab() {        
         float prob = Random.Range(0f, maxProbabilidade);
         float soma = 0f;
 
         foreach (var tile in tiles) {
             soma += tile.probabilidade;
 
-            if (soma > prob) {
-                prefab = tile.tile;
-                
-                GameObject tileInstance = Instantiate(prefab, posicao, Quaternion.identity);
-                tileInstance.name = $"Tile {posicao.x},{ posicao.y}";
-                
-                return tileInstance;
-            }
+            if (soma > prob)
+                return tile.tile;
         }
 
         return null;
@@ -110,5 +171,18 @@ public class GerenciadorGrade : MonoBehaviour {
 
     public Node[,] GetGrade() {
         return grade;
+    }
+
+    private Vector2 GetPosicao(int x, int y) {
+        Vector2 posicao = new Vector2(x, y) * tamanhoUnidade;
+        posicao.x += larguraOffset;
+        posicao.y += alturaOffset;
+        return posicao;
+    }
+
+    private Vector2 GetIndex(Vector2 posicao) {
+        int x = (int) ((posicao.x - larguraOffset) / tamanhoUnidade);
+        int y = (int) ((posicao.y - alturaOffset) / tamanhoUnidade);
+        return new Vector2(x, y);
     }
 }
