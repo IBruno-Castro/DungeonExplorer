@@ -25,9 +25,9 @@ public class GerenciadorGrade : MonoBehaviour {
     public Transform pastaTiles;
 
     [SerializeField]
-    private int largura;
+    public int largura;
     [SerializeField]
-    private int altura;
+    public int altura;
     [SerializeField]
     private float tamanhoUnidade = 1f;
     private float larguraOffset => (largura * tamanhoUnidade / -2) + tamanhoUnidade / 2;
@@ -44,7 +44,9 @@ public class GerenciadorGrade : MonoBehaviour {
     private GameObject[,] instancias;
     public Node[,] grade { get; private set; }
 
-    public Vector2 posicaoInicio { get; private set; } // Get publico, mas set privado
+    public Vector2 posicaoInicio { get; set; } // Get publico, mas set privado
+    public Vector2 posicaoAtual { get; set; } // Get publico, mas set privado
+    public Vector2 posicaoBau { get; set; } // Get publico, mas set privado
 
     [SerializeField]
     private int seed;
@@ -131,9 +133,11 @@ public class GerenciadorGrade : MonoBehaviour {
 
                 if(1 == tilesPadrao.IndexOf(tile)){
                     posicaoInicio = new Vector2(x,y);
+                    posicaoAtual = posicaoInicio;
                     moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Normal;
                 }
                 if(0 == tilesPadrao.IndexOf(tile)){
+                    posicaoBau = new Vector2(x,y);
                     moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Bau;
                 }
                 if(2 == tilesPadrao.IndexOf(tile)){
@@ -151,12 +155,12 @@ public class GerenciadorGrade : MonoBehaviour {
             for (int y = 0; y < altura; y++) {
                 if (moldeGrade[x,y]) continue;
 
-                GetTilePrefab(x, y);
+                moldeGrade[x,y] = GetTilePrefab(x, y);
             }
         }
     }
 
-    private void GetTilePrefab(int x, int y) {        
+    private GameObject GetTilePrefab(int x, int y) {        
         float prob = Random.Range(0f, maxProbabilidade);
         float soma = 0f;
 
@@ -171,8 +175,10 @@ public class GerenciadorGrade : MonoBehaviour {
                     moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Normal;
                 else
                     moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Bloqueado;
+                return moldeGrade[x,y];
             } 
         }
+        return null;
     }
 
     public Node[,] GetGrade() {
