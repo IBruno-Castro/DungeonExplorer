@@ -22,6 +22,7 @@ public class TilePadraoData {
 
 public class GerenciadorGrade : MonoBehaviour {
     public static GerenciadorGrade Instance { get; private set; }
+    public Transform pastaTiles;
 
     [SerializeField]
     private int largura;
@@ -84,7 +85,7 @@ public class GerenciadorGrade : MonoBehaviour {
             for (int y = 0; y < altura; y++) {
                 Vector2 posicao = GetPosicao(x, y);
                 
-                GameObject instancia = Instantiate(moldeGrade[x,y], posicao, Quaternion.identity);
+                GameObject instancia = Instantiate(moldeGrade[x,y], posicao, Quaternion.identity, pastaTiles);
                 instancias[x,y] = instancia;
 
                 grade[x,y] = instancia.GetComponent<Node>();
@@ -97,7 +98,7 @@ public class GerenciadorGrade : MonoBehaviour {
         Vector2 posicao = GetPosicao(x, y);
         
         Destroy(instancias[x,y]);
-        instancias[x,y] = Instantiate(tile, posicao, Quaternion.identity);
+        instancias[x,y] = Instantiate(tile, posicao, Quaternion.identity, pastaTiles);
         
         grade[x,y] = instancias[x,y].GetComponent<Node>();
         grade[x,y].posicao = posicao;
