@@ -134,7 +134,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Gnomo_Chave_0: -4452656010911193802
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

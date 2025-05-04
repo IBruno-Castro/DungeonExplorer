@@ -8,11 +8,26 @@ public class Resolvedor : MonoBehaviour {
     public Color corAndado;
     public float velocidade = 2f;
     private Coroutine moverPorCaminhoCoroutine;
+    private bool hasKey;
 
-    public void ResolverLabirinto() {
-        Node[,] grade = GerenciadorGrade.Instance.GetGrade(); // Pega a grade do problema
+    void Start(){
 
+        ResetarPosicaoResolvedor();
+    }
 
+    private void QLearning(){
+        /*
+        1: function APRENDIZAGEM QLearning
+        2: Inicializar a Função Ação-Valor Q (por exemplo, 0 para todos os estados)
+        3: for cada episódio do:
+        4: Inicializar o estado inicial s
+        5: for cada passo do episódio do:
+        6: a ← acao para o estado s derivada da Tabela Q (por exemplo, estrategia épsilon-greedy)
+        7: executar ação a, observar novo estado s0 e recompensa r
+        8: Q(s, a) ← Q(s, a) + α[r + γmaxa0Q(s0, a0) − Q(s, a)]
+        9: s ← s0
+        10: if estado s e terminal ´ then break
+        */
     }
 
 
@@ -43,38 +58,10 @@ public class Resolvedor : MonoBehaviour {
         return vizinhos;
     }
 
-    private void ColorirTile(Color cor, GameObject tile) {
-        tile.GetComponent<SpriteRenderer>().color = cor;
-    }
-
     public void ResetarPosicaoResolvedor() {
         StopAllCoroutines();
         moverPorCaminhoCoroutine = null;
         transform.position = (Vector3) GerenciadorGrade.Instance.posicaoInicio + GerenciadorGrade.Instance.transform.position;
-    }
-
-    private IEnumerator MoverPorCaminhoCoroutine(List<Node> caminho) {
-        if (moverPorCaminhoCoroutine != null) yield break; // Quebrando pois o jogador ja esta andando
-
-        if (caminho == null || caminho.Count == 0) { // Quebrando pois o caminho nao existe, ou eh impossivel
-            Debug.LogWarning("Caminho Impossivel");
-            yield break;
-        }
-
-        for (int i = 0; i < caminho.Count; i++) {
-            Node nodoAtual = caminho[i];
-
-            ColorirTile(corAndado, nodoAtual.gameObject);
-
-            if (i < caminho.Count - 1) {
-                Node proximoNodo = caminho[i + 1];
-                Vector2 posicaoAtual = nodoAtual.transform.position; // Pegando a posicao relativa ao mundo
-                Vector2 posicaoDestino = proximoNodo.transform.position; // Pegando a posicao relativa ao mundo
-
-                yield return StartCoroutine(MoverParaPosicaoCoroutine(posicaoAtual, posicaoDestino));
-            }
-        }
-        moverPorCaminhoCoroutine = null;
     }
 
     private IEnumerator MoverParaPosicaoCoroutine(Vector3 posicaoAtual, Vector3 posicaoDestino) {
