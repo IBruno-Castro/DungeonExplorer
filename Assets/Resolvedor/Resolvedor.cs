@@ -2,79 +2,251 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class Resolvedor : MonoBehaviour {
     public Color corAndado;
     public float velocidade = 2f;
     private Coroutine moverPorCaminhoCoroutine;
-    private bool hasKey;
+    private int hasKey = 0;
+
+    [Header("Data")]
+    [SerializeField] private int estados = 50;
+    [SerializeField] private int acoes = 4;
+    [SerializeField] private float taxaAprendizado = 0.1f;
+    [SerializeField] private float taxaDesconto = 0.5f;
+    [SerializeField] private float epsilon = 0.2f;
+    [SerializeField] private int episodios = 100;
 
     void Start(){
-
         ResetarPosicaoResolvedor();
     }
-
-    private void QLearning(){
-        /*
-        1: function APRENDIZAGEM QLearning
-        2: Inicializar a Função Ação-Valor Q (por exemplo, 0 para todos os estados)
-        3: for cada episódio do:
-        4: Inicializar o estado inicial s
-        5: for cada passo do episódio do:
-        6: a ← acao para o estado s derivada da Tabela Q (por exemplo, estrategia épsilon-greedy)
-        7: executar ação a, observar novo estado s0 e recompensa r
-        8: Q(s, a) ← Q(s, a) + α[r + γmaxa0Q(s0, a0) − Q(s, a)]
-        9: s ← s0
-        10: if estado s e terminal ´ then break
-        */
+    
+    public void RodarQLearning(){
+        ResetarPosicaoResolvedor(); // Garantir que comece na posição correta
+        StartCoroutine(QLearning());
     }
 
+    private IEnumerator QLearning(){
+        float[,] Q = new float[estados, acoes];
+        
+        Node[,] grade = GerenciadorGrade.Instance.GetGrade();
+        int altura = GerenciadorGrade.Instance.altura;
+        int largura = GerenciadorGrade.Instance.largura;
+        
+        for (int m = 0; m < altura; m++){
+            for (int n = 0; n < largura; n++){
+                int estadoBase = m * largura + n;
+                
+                if(grade[m,n].tipoTile == TipoTile.Bloqueado){
+                    for(int a = 0; a < acoes; a++) {
+                        Q[estadoBase, a] = float.NegativeInfinity;
+                        Q[estadoBase + 25, a] = float.NegativeInfinity;
+                    }
+                }
+                else{
+                    for(int a = 0; a < acoes; a++) {
+                        Q[estadoBase, a] = Random.Range(-0.1f, 0.1f);
+                        Q[estadoBase + 25, a] = Random.Range(-0.1f, 0.1f);
+                    }
+                }
+            }
+        }
+    
+        GerenciadorGrade gg = GerenciadorGrade.Instance;
+        
+        for (int i = 0; i < episodios; i++){ 
+            Debug.Log($"Iniciando episódio {i + 1}");
+            
 
-    private List<Node> GetVizinhos(Node node, Node[,] grade) { // Funcao auxiliar para achar os vizinhos
-        List<Node> vizinhos = new List<Node>();
-        int x = (int)node.posicao.x;
-        int y = (int)node.posicao.y;
+            gg.posicaoAtual = gg.posicaoInicio;
+            
 
-        // Checa se há vizinhos nas 4 direcoes
-        bool esquerda = x > 0;
-        bool direita = x < grade.GetLength(0) - 1;
-        bool cima = y < grade.GetLength(1) - 1;
-        bool baixo = y > 0;
-
-        bool reto = esquerda ^ baixo && esquerda ^ cima && direita ^ baixo && direita ^ cima;
-
-        //Horizontal/Vertical
-        if (esquerda) vizinhos.Add(grade[x - 1, y]); // Esquerda
-        if (direita) vizinhos.Add(grade[x + 1, y]); // Direita
-        if (baixo) vizinhos.Add(grade[x, y - 1]); // Baixo
-        if (cima) vizinhos.Add(grade[x, y + 1]); // Cima
-
-        //Diagonais
-        if (esquerda && cima) vizinhos.Add(grade[x - 1, y + 1]); // Esquerda-Cima
-        if (esquerda && baixo) vizinhos.Add(grade[x - 1, y - 1]); //Esquerda-Baixo
-        if (direita && cima) vizinhos.Add(grade[x + 1, y + 1]); //Direita-Cima
-        if (direita && baixo) vizinhos.Add(grade[x + 1, y - 1]); //Direita-Baixo
-        return vizinhos;
+            float tamTile = 1.0f;
+            Vector3 posicaoMundo = new Vector3(gg.posicaoInicio.x * tamTile, gg.posicaoInicio.y * tamTile, 0f);
+            
+            transform.position = posicaoMundo;
+            hasKey = 0;
+            
+            int maxPassos = altura * largura * 4;
+            int passoAtual = 0;
+            
+            int estadoAtual = (int)(gg.posicaoAtual.y * largura + gg.posicaoAtual.x) + hasKey;
+            int objetivo = (int)(gg.posicaoBau.y * largura + gg.posicaoBau.x) + 25;
+    
+            bool objetivoAlcancado = false;
+            
+            while(estadoAtual != objetivo && passoAtual < maxPassos){
+                passoAtual++;
+                
+                // Epsilon Greedy
+                int acaoEscolhida;
+                if (Random.value < epsilon) {
+                    List<int> acoesValidas = new List<int>();
+                    for (int a = 0; a < acoes; a++) {
+                        Vector2 target = CalcularDestino(gg.posicaoAtual, a);
+                        if (EhPosicaoValida(target, altura, largura) && 
+                            grade[(int)target.y, (int)target.x].tipoTile != TipoTile.Bloqueado) {
+                            acoesValidas.Add(a);
+                        }
+                    }
+                    
+                    if (acoesValidas.Count > 0) {
+                        acaoEscolhida = acoesValidas[Random.Range(0, acoesValidas.Count)];
+                    } 
+                    else {
+                        break;
+                    }
+                } 
+                else {
+                    acaoEscolhida = EncontrarMelhorAcao(estadoAtual, acoes, Q, altura, largura, grade, gg.posicaoAtual);
+                }
+                
+                Vector2 destino = CalcularDestino(gg.posicaoAtual, acaoEscolhida);
+                
+                if (!EhPosicaoValida(destino, altura, largura) || 
+                    grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Bloqueado) {
+                    Q[estadoAtual, acaoEscolhida] = float.NegativeInfinity;
+                    continue;
+                }
+                
+                yield return StartCoroutine(MoverParaPosicaoCoroutine(gg.posicaoAtual, destino));
+                
+                int novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
+                float recompensa = CalcularRecompensa(grade[(int)destino.y, (int)destino.x].tipoTile);
+                
+                if(grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Chave && hasKey == 0){
+                    hasKey = 25;
+                    novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
+                    Debug.Log("Chave coletada!");
+                }
+                
+                if(grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Bau && hasKey == 25){
+                    Debug.Log("Objetivo alcançado! Jogo finalizado!");
+                    recompensa = 10;
+                    objetivoAlcancado = true;
+                }
+                
+                int melhorAcaoProximoEstado = EncontrarMelhorAcao(novoEstado, acoes, Q, altura, largura, grade, destino);
+                float valorQ = Q[estadoAtual, acaoEscolhida];
+                float valorQProximoEstado = Q[novoEstado, melhorAcaoProximoEstado];
+                
+                Q[estadoAtual, acaoEscolhida] = valorQ + taxaAprendizado * (recompensa + taxaDesconto * valorQProximoEstado - valorQ);
+                
+                estadoAtual = novoEstado;
+                
+                if (objetivoAlcancado) {
+                    Debug.Log($"Episódio {i+1} finalizado com sucesso! O agente encontrou o baú com a chave!");
+                    break;
+                }
+                
+                yield return new WaitForSeconds(0.1f);
+            }
+            
+            if (passoAtual >= maxPassos) {
+                Debug.LogWarning($"Episódio {i+1} terminado por atingir limite máximo de passos");
+            } else if (!objetivoAlcancado) {
+                Debug.Log($"Episódio {i+1} completado em {passoAtual} passos");
+            }
+            
+            yield return new WaitForSeconds(0.5f);
+        }
+        
+        Debug.Log("Treinamento Q-Learning concluído!");
+    }
+    
+    private Vector2 CalcularDestino(Vector2 posicaoAtual, int acao) {
+        switch(acao){
+            case 0: return posicaoAtual + new Vector2(-1, 0); // Esquerda
+            case 1: return posicaoAtual + new Vector2(1, 0);  // Direita
+            case 2: return posicaoAtual + new Vector2(0, 1);  // Cima
+            case 3: return posicaoAtual + new Vector2(0, -1); // Baixo
+            default: return posicaoAtual;
+        }
+    }
+    
+    private bool EhPosicaoValida(Vector2 posicao, int altura, int largura) {
+        return posicao.x >= 0 && posicao.x < largura && posicao.y >= 0 && posicao.y < altura;
+    }
+    
+    private float CalcularRecompensa(TipoTile tipoTile) {
+        switch(tipoTile) {
+            case TipoTile.Bau:
+                return hasKey == 25 ? 10 : -5;
+            case TipoTile.Chave:
+                hasKey = 25;
+                return 2.5f;
+            case TipoTile.Espinho:
+                return -10;
+            case TipoTile.Normal:
+                return -1f;
+            case TipoTile.Bloqueado:
+                return float.NegativeInfinity;
+            default:
+                return -0.2f;
+        }
+    }
+    private int EncontrarMelhorAcao(int estadoAtual, int acoes, float[,] Q, int altura, int largura, Node[,] grade, Vector2 posicaoAtual) {
+        int melhorAcao = 0;
+        float melhorValor = float.NegativeInfinity;
+    
+        for(int a = 0; a < acoes; a++) {
+            Vector2 destino = CalcularDestino(posicaoAtual, a);
+            
+            if (EhPosicaoValida(destino, altura, largura) && 
+                grade[(int)destino.y, (int)destino.x].tipoTile != TipoTile.Bloqueado) {
+                if (Q[estadoAtual, a] > melhorValor) {
+                    melhorValor = Q[estadoAtual, a];
+                    melhorAcao = a;
+                }
+            }
+        }
+        
+        return melhorAcao;
     }
 
     public void ResetarPosicaoResolvedor() {
         StopAllCoroutines();
         moverPorCaminhoCoroutine = null;
-        transform.position = (Vector3) GerenciadorGrade.Instance.posicaoInicio + GerenciadorGrade.Instance.transform.position;
+        
+        float tamTile = 1.0f;
+        
+        GerenciadorGrade gg = GerenciadorGrade.Instance;
+        Vector3 posicaoMundo = new Vector3(gg.posicaoInicio.x * tamTile, gg.posicaoInicio.y * tamTile, 0f);
+        
+        transform.position = posicaoMundo;
     }
 
-    private IEnumerator MoverParaPosicaoCoroutine(Vector3 posicaoAtual, Vector3 posicaoDestino) {
+    private IEnumerator MoverParaPosicaoCoroutine(Vector2 posicaoAtual, Vector2 posicaoDestino) {
+        GerenciadorGrade gg = GerenciadorGrade.Instance;
+        
+        float tamTile = 1.0f; 
+        
+        Vector3 posicaoMundoAtual = new Vector3(posicaoAtual.x * tamTile, posicaoAtual.y * tamTile, 0f) + gg.transform.position;
+        Vector3 posicaoMundoDestino = new Vector3(posicaoDestino.x * tamTile, posicaoDestino.y * tamTile, 0f) + gg.transform.position;
+        
+        
         float tempo = 0f;
-        float distancia = Vector3.Distance(posicaoAtual, posicaoDestino);
+        float distancia = Vector3.Distance(posicaoMundoAtual, posicaoMundoDestino);
 
         while (tempo < distancia / velocidade) {
             tempo += Time.deltaTime;
             float interpolacao = tempo / (distancia / velocidade);
-            transform.position = Vector3.Lerp(posicaoAtual, posicaoDestino, interpolacao);
+            transform.position = Vector3.Lerp(posicaoMundoAtual, posicaoMundoDestino, interpolacao);
             yield return null;
         }
+        
+        gg.posicaoAtual = posicaoDestino;
+        transform.position = posicaoMundoDestino;
+    }
 
-        transform.position = posicaoDestino;
+    public void Acelerar(){
+        Time.timeScale = 5;
+    }
+    public void Desacelerar(){
+        Time.timeScale = 1;
+
     }
 }
