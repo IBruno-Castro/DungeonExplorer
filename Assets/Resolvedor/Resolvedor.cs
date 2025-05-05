@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEditor;
@@ -63,11 +64,16 @@ public class Resolvedor : MonoBehaviour {
         }
     
         GerenciadorGrade gg = GerenciadorGrade.Instance;
+
+        List<(bool sucesso, int espinhos, int passos, float epsilon)> estatisticas = new List<(bool sucesso, int espinhos, int passos, float epsilon)>();
         
         //para cada episódio
         for (int i = 0; i < episodios; i++){ 
             Debug.Log($"Iniciando episódio {i + 1}");
-            
+
+            int espinhos = 0;
+            int passos = 0;
+
             //inicializar estado
             gg.posicaoAtual = gg.posicaoInicio;
             
@@ -99,6 +105,7 @@ public class Resolvedor : MonoBehaviour {
             
             while(!objetivoAlcancado && passoAtual < maxPassos){
                 passoAtual++;
+                passos++;
                 
                 // Epsilon Greedy
                 int acaoEscolhida;
@@ -155,6 +162,7 @@ public class Resolvedor : MonoBehaviour {
                 }
 
                 if(grade[(int)destino.x, (int)destino.y].tipoTile == TipoTile.Espinho){
+                    espinhos++;
                     Instantiate(particulasSangue, transform.position, transform.rotation);
                 }
                 
@@ -169,6 +177,9 @@ public class Resolvedor : MonoBehaviour {
                 if (objetivoAlcancado) {
                     Instantiate(particulasBau, transform.position, transform.rotation);
                     Debug.Log($"Episódio {i+1} finalizado com sucesso! O agente encontrou o baú com a chave!");
+                    
+                    estatisticas.Add((true, espinhos, passos, epsilon));
+                    
                     break;
                 }
                 
@@ -176,6 +187,7 @@ public class Resolvedor : MonoBehaviour {
             }
             
             if (passoAtual >= maxPassos) {
+                estatisticas.Add((true, espinhos, passos, epsilon));
                 Debug.LogWarning($"Episódio {i+1} terminado por atingir limite máximo de passos");
             } else if (!objetivoAlcancado) {
                 Debug.Log($"Episódio {i+1} completado em {passoAtual} passos");
@@ -186,6 +198,8 @@ public class Resolvedor : MonoBehaviour {
             gg.ResetGrade();
         }
         
+        EscreverArquivo(estatisticas);
+
         Debug.Log("Treinamento Q-Learning concluído!");
     }
     
@@ -281,5 +295,19 @@ public class Resolvedor : MonoBehaviour {
     public void Desacelerar(){
         Time.timeScale = 1;
 
+    }
+
+    private void EscreverArquivo(List<(bool sucesso, int espinhos, int passos, float epsilon)> estatisticas) {
+        string path = Path.Combine(Application.persistentDataPath, "estatisticas.csv");
+
+        using (StreamWriter writer = new(path)) {
+            writer.WriteLine("successo;passos;espinhos;epsilon");
+            foreach (var dados in estatisticas) {
+                int sucesso = dados.sucesso ? 1 : 0;
+                writer.WriteLine($"{sucesso},{dados.passos},{dados.espinhos};{dados.epsilon}");
+            }
+        }
+
+        Debug.Log($"Arquivo CSV salvo em: {path}");
     }
 }
