@@ -22,6 +22,7 @@ public class Resolvedor : MonoBehaviour {
 
     [Header("Partículas")]
     [SerializeField] private ParticleSystem particulasBau;
+    [SerializeField] private ParticleSystem particulasSangue;
 
     [SerializeField] private GameObject tileNormal;
 
@@ -85,12 +86,12 @@ public class Resolvedor : MonoBehaviour {
             bool objetivoAlcancado = false;
 
             if(i % 5 == 0){
-                taxaAprendizado -= (taxaAprendizado - 0.05f) > 0 ? 0.05f : 0;
-                epsilon -= (epsilon - 0.05f) > 0 ? 0.05f : 0;
+                taxaAprendizado -= 0.05f;
+                epsilon -=  0.05f;
 
 
                 taxaAprendizado = Mathf.Clamp(taxaAprendizado, 0.01f, float.PositiveInfinity );
-                epsilon = Mathf.Clamp(epsilon, 0.05f, float.PositiveInfinity );
+                epsilon = Mathf.Clamp(epsilon, 0.01f, float.PositiveInfinity );
 
             }
 
@@ -106,7 +107,6 @@ public class Resolvedor : MonoBehaviour {
                     for (int a = 0; a < acoes; a++) {
                         Vector2 target = CalcularDestino(gg.posicaoAtual, a);
 
-                        Debug.LogWarning(grade[(int)target.x, (int)target.y].tipoTile);
                         if (EhPosicaoValida(target, altura, largura) && 
                             grade[(int)target.x, (int)target.y].tipoTile != TipoTile.Bloqueado) {
                             acoesValidas.Add(a);
@@ -138,8 +138,9 @@ public class Resolvedor : MonoBehaviour {
                 int novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
                 float recompensa = CalcularRecompensa(grade[(int)destino.x, (int)destino.y].tipoTile);
 
+
                 Debug.Log(grade[(int)destino.x, (int)destino.y].tipoTile + " - Recompensa: " + recompensa + (hasKey == 25 ? " - Tem chave" : " - Não tem chave"));
-                
+
                 if(grade[(int)destino.x, (int)destino.y].tipoTile == TipoTile.Chave && hasKey == 0){
                     hasKey = 25;
                     novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
@@ -151,6 +152,10 @@ public class Resolvedor : MonoBehaviour {
                     Debug.Log("Objetivo alcançado! Jogo finalizado!");
                     recompensa = 10;
                     objetivoAlcancado = true;
+                }
+
+                if(grade[(int)destino.x, (int)destino.y].tipoTile == TipoTile.Espinho){
+                    Instantiate(particulasSangue, transform.position, transform.rotation);
                 }
                 
                 int melhorAcaoProximoEstado = EncontrarMelhorAcao(novoEstado, acoes, Q, altura, largura, grade, destino);

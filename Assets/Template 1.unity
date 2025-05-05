@@ -1484,9 +1484,21 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4615658488131708513, guid: 819e28ea96276e642adba23ba5cd1744, type: 3}
+      propertyPath: tileNormal
+      value: 
+      objectReference: {fileID: 8714567723732766086, guid: ce4189c575f90c64c8ed34bc48dd118d, type: 3}
+    - target: {fileID: 4615658488131708513, guid: 819e28ea96276e642adba23ba5cd1744, type: 3}
       propertyPath: gerenciador
       value: 
       objectReference: {fileID: 1899935003}
+    - target: {fileID: 4615658488131708513, guid: 819e28ea96276e642adba23ba5cd1744, type: 3}
+      propertyPath: particulasBau
+      value: 
+      objectReference: {fileID: 3675330494061699543, guid: 3cfe6679add1d834cbfcd36952dd4944, type: 3}
+    - target: {fileID: 4615658488131708513, guid: 819e28ea96276e642adba23ba5cd1744, type: 3}
+      propertyPath: particulasSangue
+      value: 
+      objectReference: {fileID: 683370602218415910, guid: 69681c93567e2a8478e70c7ab16ee9ab, type: 3}
     - target: {fileID: 5182382624981162984, guid: 819e28ea96276e642adba23ba5cd1744, type: 3}
       propertyPath: m_Name
       value: Agente
@@ -1565,7 +1577,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5725823893287017244, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
       propertyPath: seed
-      value: 3
+      value: 13
       objectReference: {fileID: 0}
     - target: {fileID: 5725823893287017244, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
       propertyPath: altura
@@ -1609,15 +1621,15 @@ PrefabInstance:
       objectReference: {fileID: 8714567723732766086, guid: 527a54a36cf2d494288916c3dcbc4b2a, type: 3}
     - target: {fileID: 5725823893287017244, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
       propertyPath: tiles.Array.data[0].probabilidade
-      value: 7
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5725823893287017244, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
       propertyPath: tiles.Array.data[1].probabilidade
-      value: 3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5725823893287017244, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
       propertyPath: tilesPadrao.Array.data[2].quantidade
-      value: 2
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 5725823893287017244, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
       propertyPath: tilesPadrao.Array.data[3].quantidade
@@ -1630,6 +1642,18 @@ PrefabInstance:
     - target: {fileID: 5725823893287017245, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
       propertyPath: m_Name
       value: GerenciadorGrade
+      objectReference: {fileID: 0}
+    - target: {fileID: 9114569805384624493, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
+      propertyPath: m_Color.b
+      value: 0.022704177
+      objectReference: {fileID: 0}
+    - target: {fileID: 9114569805384624493, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
+      propertyPath: m_Color.g
+      value: 0.015574938
+      objectReference: {fileID: 0}
+    - target: {fileID: 9114569805384624493, guid: 7009aebe0383d5246846b7ec171241b1, type: 3}
+      propertyPath: m_Color.r
+      value: 0.13207549
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
