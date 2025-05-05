@@ -75,6 +75,7 @@ public class GerenciadorGrade : MonoBehaviour {
         GerarTilesAleatorios();
 
         ResetGrade();
+        
     }
 
     public void ResetGrade() {
@@ -89,6 +90,28 @@ public class GerenciadorGrade : MonoBehaviour {
 
                 grade[x,y] = instancia.GetComponent<Node>();
                 grade[x,y].posicao = posicao;
+                
+                if(instancia.name == "TileInicio(Clone)"){
+                    posicaoInicio = new Vector2(x,y);
+                    posicaoAtual = posicaoInicio;
+                    grade[x,y].GetComponent<Node>().tipoTile = TipoTile.Normal;
+                }
+                if(instancia.name == "TileBau(Clone)"){
+                    posicaoBau = new Vector2(x,y);
+                    grade[x,y].GetComponent<Node>().tipoTile = TipoTile.Bau;
+                }
+                if(instancia.name == "TileEspinhos(Clone)"){
+                    grade[x,y].GetComponent<Node>().tipoTile = TipoTile.Espinho;
+                }
+                if(instancia.name == "TileChave(Clone)"){
+                    grade[x,y].GetComponent<Node>().tipoTile = TipoTile.Chave;
+                }
+                if(instancia.name == "TilePreto(Clone)"){
+                    grade[x,y].GetComponent<Node>().tipoTile = TipoTile.Bloqueado;
+                }
+                if(instancia.name == "TileDungeon(Clone)"){
+                    grade[x,y].GetComponent<Node>().tipoTile = TipoTile.Normal;
+                }
             }
         }
     }
@@ -127,24 +150,6 @@ public class GerenciadorGrade : MonoBehaviour {
                 if (!moldeGrade[x,y]) {
                     moldeGrade[x,y] = tile.tile;
                     quantidadeSetada += 1;
-
-                    
-                }
-
-                if(1 == tilesPadrao.IndexOf(tile)){
-                    posicaoInicio = new Vector2(x,y);
-                    posicaoAtual = posicaoInicio;
-                    moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Normal;
-                }
-                if(0 == tilesPadrao.IndexOf(tile)){
-                    posicaoBau = new Vector2(x,y);
-                    moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Bau;
-                }
-                if(2 == tilesPadrao.IndexOf(tile)){
-                    moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Espinho;
-                }
-                if(3 == tilesPadrao.IndexOf(tile)){
-                    moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Chave;
                 }
             }
         }
@@ -170,11 +175,6 @@ public class GerenciadorGrade : MonoBehaviour {
 
             if (soma > prob){
                 moldeGrade[x,y] = tile.tile;
-
-                if(index == 0)
-                    moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Normal;
-                else
-                    moldeGrade[x,y].GetComponent<Node>().tipoTile = TipoTile.Bloqueado;
                 return moldeGrade[x,y];
             } 
         }

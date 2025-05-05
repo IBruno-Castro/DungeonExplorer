@@ -6,8 +6,19 @@ public enum TipoTile {
 
 public class Node : MonoBehaviour {
     [SerializeField]
-    public Vector2 posicao { get; set; }
+    private Vector2 _posicao;
+    
     [SerializeField]
-
-    public TipoTile tipoTile{ get; set; }
+    private TipoTile _tipoTile;
+    
+    // Propriedades para acesso externo, se necessário
+    public Vector2 posicao {
+        get { return _posicao; }
+        set { _posicao = value; }
+    }
+    
+    public TipoTile tipoTile {
+        get { return _tipoTile; }
+        set { _tipoTile = value; }
+    }
 }

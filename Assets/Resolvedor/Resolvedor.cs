@@ -9,15 +9,14 @@ using UnityEngine.UIElements;
 public class Resolvedor : MonoBehaviour {
     public Color corAndado;
     public float velocidade = 2f;
-    private Coroutine moverPorCaminhoCoroutine;
     private int hasKey = 0;
 
     [Header("Data")]
     [SerializeField] private int estados = 50;
     [SerializeField] private int acoes = 4;
-    [SerializeField] private float taxaAprendizado = 0.1f;
+    [SerializeField] private float taxaAprendizado = 1f;
     [SerializeField] private float taxaDesconto = 0.5f;
-    [SerializeField] private float epsilon = 0.2f;
+    [SerializeField] private float epsilon = 0.8f;
     [SerializeField] private int episodios = 100;
 
     void Start(){
@@ -36,6 +35,7 @@ public class Resolvedor : MonoBehaviour {
         int altura = GerenciadorGrade.Instance.altura;
         int largura = GerenciadorGrade.Instance.largura;
         
+        //inicalização tabela Q
         for (int m = 0; m < altura; m++){
             for (int n = 0; n < largura; n++){
                 int estadoBase = m * largura + n;
@@ -57,10 +57,11 @@ public class Resolvedor : MonoBehaviour {
     
         GerenciadorGrade gg = GerenciadorGrade.Instance;
         
+        //para cada episódio
         for (int i = 0; i < episodios; i++){ 
             Debug.Log($"Iniciando episódio {i + 1}");
             
-
+            //inicializar estado
             gg.posicaoAtual = gg.posicaoInicio;
             
 
@@ -74,11 +75,13 @@ public class Resolvedor : MonoBehaviour {
             int passoAtual = 0;
             
             int estadoAtual = (int)(gg.posicaoAtual.y * largura + gg.posicaoAtual.x) + hasKey;
-            int objetivo = (int)(gg.posicaoBau.y * largura + gg.posicaoBau.x) + 25;
     
             bool objetivoAlcancado = false;
+
+            taxaAprendizado -= 0.05f;
+            epsilon -= 0.05f;
             
-            while(estadoAtual != objetivo && passoAtual < maxPassos){
+            while(!objetivoAlcancado && passoAtual < maxPassos){
                 passoAtual++;
                 
                 // Epsilon Greedy
@@ -107,23 +110,26 @@ public class Resolvedor : MonoBehaviour {
                 Vector2 destino = CalcularDestino(gg.posicaoAtual, acaoEscolhida);
                 
                 if (!EhPosicaoValida(destino, altura, largura) || 
-                    grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Bloqueado) {
+                    grade[(int)destino.y, (int)destino.y].tipoTile == TipoTile.Bloqueado) {
                     Q[estadoAtual, acaoEscolhida] = float.NegativeInfinity;
                     continue;
                 }
-                
+
+                gg.posicaoAtual = destino;
                 yield return StartCoroutine(MoverParaPosicaoCoroutine(gg.posicaoAtual, destino));
                 
                 int novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
-                float recompensa = CalcularRecompensa(grade[(int)destino.y, (int)destino.x].tipoTile);
+                float recompensa = CalcularRecompensa(grade[(int)destino.x, (int)destino.y].tipoTile);
+
+                Debug.Log(grade[(int)destino.x, (int)destino.y].tipoTile + " - Recompensa: " + recompensa + (hasKey == 25 ? " - Tem chave" : " - Não tem chave"));
                 
-                if(grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Chave && hasKey == 0){
+                if(grade[(int)destino.x, (int)destino.y].tipoTile == TipoTile.Chave && hasKey == 0){
                     hasKey = 25;
                     novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
                     Debug.Log("Chave coletada!");
                 }
                 
-                if(grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Bau && hasKey == 25){
+                if(grade[(int)destino.x, (int)destino.y].tipoTile == TipoTile.Bau && hasKey == 25){
                     Debug.Log("Objetivo alcançado! Jogo finalizado!");
                     recompensa = 10;
                     objetivoAlcancado = true;
@@ -152,6 +158,8 @@ public class Resolvedor : MonoBehaviour {
             }
             
             yield return new WaitForSeconds(0.5f);
+
+            gg.ResetGrade();
         }
         
         Debug.Log("Treinamento Q-Learning concluído!");
@@ -176,12 +184,14 @@ public class Resolvedor : MonoBehaviour {
             case TipoTile.Bau:
                 return hasKey == 25 ? 10 : -5;
             case TipoTile.Chave:
-                hasKey = 25;
-                return 2.5f;
+                if(hasKey == 0){
+                    return 5f;
+                }
+                return -0.1f;
             case TipoTile.Espinho:
-                return -10;
+                return -10; // Sempre deve dar recompensa negativa
             case TipoTile.Normal:
-                return -1f;
+                return -0.1f;
             case TipoTile.Bloqueado:
                 return float.NegativeInfinity;
             default:
@@ -196,7 +206,7 @@ public class Resolvedor : MonoBehaviour {
             Vector2 destino = CalcularDestino(posicaoAtual, a);
             
             if (EhPosicaoValida(destino, altura, largura) && 
-                grade[(int)destino.y, (int)destino.x].tipoTile != TipoTile.Bloqueado) {
+                grade[(int)destino.y, (int)destino.y].tipoTile != TipoTile.Bloqueado) {
                 if (Q[estadoAtual, a] > melhorValor) {
                     melhorValor = Q[estadoAtual, a];
                     melhorAcao = a;
@@ -209,7 +219,6 @@ public class Resolvedor : MonoBehaviour {
 
     public void ResetarPosicaoResolvedor() {
         StopAllCoroutines();
-        moverPorCaminhoCoroutine = null;
         
         float tamTile = 1.0f;
         
