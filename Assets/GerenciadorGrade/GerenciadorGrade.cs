@@ -185,11 +185,11 @@ public class GerenciadorGrade : MonoBehaviour {
         return grade;
     }
 
-    private Vector2 GetPosicao(int x, int y) {
-        Vector2 posicao = new Vector2(x, y) * tamanhoUnidade;
-        posicao.x += larguraOffset;
-        posicao.y += alturaOffset;
-        return posicao;
+    public Vector2 GetPosicao(int x, int y) {
+    Vector2 posicao = new Vector2(x, y) * tamanhoUnidade;
+    posicao.x += larguraOffset;
+    posicao.y += alturaOffset;
+    return posicao;
     }
 
     private Vector2 GetIndex(Vector2 posicao) {

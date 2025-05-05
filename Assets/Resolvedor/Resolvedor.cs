@@ -12,204 +12,241 @@ public class Resolvedor : MonoBehaviour {
     private Coroutine moverPorCaminhoCoroutine;
     private int hasKey = 0;
 
+    [Header("Data")]
+    [SerializeField] private int estados = 50;
+    [SerializeField] private int acoes = 4;
+    [SerializeField] private float taxaAprendizado = 0.1f;
+    [SerializeField] private float taxaDesconto = 0.5f;
+    [SerializeField] private float epsilon = 0.2f;
+    [SerializeField] private int episodios = 100;
+
     void Start(){
         ResetarPosicaoResolvedor();
     }
     
     public void RodarQLearning(){
+        ResetarPosicaoResolvedor(); // Garantir que comece na posição correta
         StartCoroutine(QLearning());
     }
 
     private IEnumerator QLearning(){
-        /*
-        1: function APRENDIZAGEM QLearning
-        2: Inicializar a Função Ação-Valor Q (por exemplo, 0 para todos os estados)
-        3: for cada episódio do:
-        4: Inicializar o estado inicial s
-        5: for cada passo do episódio do:
-        6: a ← acao para o estado s derivada da Tabela Q (por exemplo, estrategia épsilon-greedy)
-        7: executar ação a, observar novo estado s0 e recompensa r
-        8: Q(s, a) ← Q(s, a) + α[r + γmaxa0Q(s0, a0) − Q(s, a)]
-        9: s ← s0
-        10: if estado s e terminal ´ then break
-        */
-        int estados = 50;
-        int acoes = 4;
-        float taxaAprendizado = 0.1f;
-        float[,] Q = new float[estados,acoes];
-        int episodios = 20;
-        float recompensa = 0;
-
-        int contador = 0;
+        float[,] Q = new float[estados, acoes];
+        
         Node[,] grade = GerenciadorGrade.Instance.GetGrade();
         int altura = GerenciadorGrade.Instance.altura;
         int largura = GerenciadorGrade.Instance.largura;
         
-        // Initialize Q table
         for (int m = 0; m < altura; m++){
             for (int n = 0; n < largura; n++){
+                int estadoBase = m * largura + n;
+                
                 if(grade[m,n].tipoTile == TipoTile.Bloqueado){
-                    Q[contador,0] = float.NegativeInfinity;
-                    Q[contador,1] = float.NegativeInfinity;
-                    Q[contador,2] = float.NegativeInfinity;
-                    Q[contador,3] = float.NegativeInfinity;
-
-                    Q[contador + 25,0] = float.NegativeInfinity;
-                    Q[contador + 25,1] = float.NegativeInfinity;
-                    Q[contador + 25,2] = float.NegativeInfinity;
-                    Q[contador + 25,3] = float.NegativeInfinity;
+                    for(int a = 0; a < acoes; a++) {
+                        Q[estadoBase, a] = float.NegativeInfinity;
+                        Q[estadoBase + 25, a] = float.NegativeInfinity;
+                    }
                 }
                 else{
-                    Q[contador,0] = 0;
-                    Q[contador,1] = 0;
-                    Q[contador,2] = 0;
-                    Q[contador,3] = 0;
-
-                    Q[contador + 25,0] = 0;
-                    Q[contador + 25,1] = 0;
-                    Q[contador + 25,2] = 0;
-                    Q[contador + 25,3] = 0;
+                    for(int a = 0; a < acoes; a++) {
+                        Q[estadoBase, a] = Random.Range(-0.1f, 0.1f);
+                        Q[estadoBase + 25, a] = Random.Range(-0.1f, 0.1f);
+                    }
                 }
-                contador++;
             }
         }
-
+    
         GerenciadorGrade gg = GerenciadorGrade.Instance;
-        for (int i = 0; i < episodios; i++){ // Para cada Episódio
-            Vector2 posAtual = gg.posicaoAtual;
-            int s = (int)(posAtual.y * largura + posAtual.x) + hasKey;
-            int objetivo = (int)(gg.posicaoBau.y * largura + gg.posicaoBau.x) + (estados / 2);
+        
+        for (int i = 0; i < episodios; i++){ 
+            Debug.Log($"Iniciando episódio {i + 1}");
+            
 
-            while(s != objetivo){
-                int melhorAcao = EncontrarMelhorAcao(s, acoes, Q);
-                /*
-                    0 - Esquerda
-                    1 - Direita
-                    2 - Cima
-                    3 - Baixo
-                */
-                Vector2 destino = gg.posicaoAtual;
-                switch(melhorAcao){
-                    case 0:
-                        destino = gg.posicaoAtual + new Vector2(-1, 0);
+            gg.posicaoAtual = gg.posicaoInicio;
+            
+
+            float tamTile = 1.0f;
+            Vector3 posicaoMundo = new Vector3(gg.posicaoInicio.x * tamTile, gg.posicaoInicio.y * tamTile, 0f);
+            
+            transform.position = posicaoMundo;
+            hasKey = 0;
+            
+            int maxPassos = altura * largura * 4;
+            int passoAtual = 0;
+            
+            int estadoAtual = (int)(gg.posicaoAtual.y * largura + gg.posicaoAtual.x) + hasKey;
+            int objetivo = (int)(gg.posicaoBau.y * largura + gg.posicaoBau.x) + 25;
+    
+            bool objetivoAlcancado = false;
+            
+            while(estadoAtual != objetivo && passoAtual < maxPassos){
+                passoAtual++;
+                
+                // Epsilon Greedy
+                int acaoEscolhida;
+                if (Random.value < epsilon) {
+                    List<int> acoesValidas = new List<int>();
+                    for (int a = 0; a < acoes; a++) {
+                        Vector2 target = CalcularDestino(gg.posicaoAtual, a);
+                        if (EhPosicaoValida(target, altura, largura) && 
+                            grade[(int)target.y, (int)target.x].tipoTile != TipoTile.Bloqueado) {
+                            acoesValidas.Add(a);
+                        }
+                    }
+                    
+                    if (acoesValidas.Count > 0) {
+                        acaoEscolhida = acoesValidas[Random.Range(0, acoesValidas.Count)];
+                    } 
+                    else {
                         break;
-                    case 1:
-                        destino = gg.posicaoAtual + new Vector2(1, 0);
-                        break;
-                    case 2:
-                        destino = gg.posicaoAtual + new Vector2(0, 1);
-                        break;
-                    case 3:
-                        destino = gg.posicaoAtual + new Vector2(0, -1);
-                        break;
+                    }
+                } 
+                else {
+                    acaoEscolhida = EncontrarMelhorAcao(estadoAtual, acoes, Q, altura, largura, grade, gg.posicaoAtual);
                 }
                 
-                // Check if destination is within grid bounds
-                if (destino.x < 0 || destino.x >= largura || destino.y < 0 || destino.y >= altura) {
-                    // Destination is out of bounds, skip this action
+                Vector2 destino = CalcularDestino(gg.posicaoAtual, acaoEscolhida);
+                
+                if (!EhPosicaoValida(destino, altura, largura) || 
+                    grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Bloqueado) {
+                    Q[estadoAtual, acaoEscolhida] = float.NegativeInfinity;
                     continue;
                 }
                 
                 yield return StartCoroutine(MoverParaPosicaoCoroutine(gg.posicaoAtual, destino));
-
-                int sLinha = (int)(destino.y * largura + destino.x) + hasKey;
                 
-                // Ensure correct indices for the grid
-                int gridY = (int)destino.y;
-                int gridX = (int)destino.x;
+                int novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
+                float recompensa = CalcularRecompensa(grade[(int)destino.y, (int)destino.x].tipoTile);
                 
-                // Make sure we're not accessing out of bounds
-                if (gridY >= 0 && gridY < altura && gridX >= 0 && gridX < largura) {
-                    Node nodeLinha = grade[gridY, gridX];
-
-                    switch(nodeLinha.tipoTile){
-                        case TipoTile.Bau:
-                            if(hasKey == 25){
-                                recompensa = 10;
-                            }
-                            else{
-                                recompensa = -5;
-                            }
-                            break;
-                        case TipoTile.Chave:
-                            recompensa = 2.5f;
-                            hasKey = 25;
-                            break;
-                        case TipoTile.Espinho:
-                            recompensa = -10;
-                            break;
-                        case TipoTile.Normal:
-                            recompensa = -0.1f;
-                            break;
-                    }
-                    
-                    // Make sure sLinha is valid for Q table
-                    if (sLinha >= 0 && sLinha < estados) {
-                        int bestActionForSLinha = EncontrarMelhorAcao(sLinha, acoes, Q);
-                        Q[s, melhorAcao] = Q[s, melhorAcao] + taxaAprendizado * 
-                            (recompensa + 0.5f * (Q[sLinha, bestActionForSLinha] - Q[s, melhorAcao]));
-                        s = sLinha;
-                    }
+                if(grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Chave && hasKey == 0){
+                    hasKey = 25;
+                    novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
+                    Debug.Log("Chave coletada!");
                 }
+                
+                if(grade[(int)destino.y, (int)destino.x].tipoTile == TipoTile.Bau && hasKey == 25){
+                    Debug.Log("Objetivo alcançado! Jogo finalizado!");
+                    recompensa = 10;
+                    objetivoAlcancado = true;
+                }
+                
+                int melhorAcaoProximoEstado = EncontrarMelhorAcao(novoEstado, acoes, Q, altura, largura, grade, destino);
+                float valorQ = Q[estadoAtual, acaoEscolhida];
+                float valorQProximoEstado = Q[novoEstado, melhorAcaoProximoEstado];
+                
+                Q[estadoAtual, acaoEscolhida] = valorQ + taxaAprendizado * (recompensa + taxaDesconto * valorQProximoEstado - valorQ);
+                
+                estadoAtual = novoEstado;
+                
+                if (objetivoAlcancado) {
+                    Debug.Log($"Episódio {i+1} finalizado com sucesso! O agente encontrou o baú com a chave!");
+                    break;
+                }
+                
+                yield return new WaitForSeconds(0.1f);
             }
+            
+            if (passoAtual >= maxPassos) {
+                Debug.LogWarning($"Episódio {i+1} terminado por atingir limite máximo de passos");
+            } else if (!objetivoAlcancado) {
+                Debug.Log($"Episódio {i+1} completado em {passoAtual} passos");
+            }
+            
+            yield return new WaitForSeconds(0.5f);
+        }
+        
+        Debug.Log("Treinamento Q-Learning concluído!");
+    }
+    
+    private Vector2 CalcularDestino(Vector2 posicaoAtual, int acao) {
+        switch(acao){
+            case 0: return posicaoAtual + new Vector2(-1, 0); // Esquerda
+            case 1: return posicaoAtual + new Vector2(1, 0);  // Direita
+            case 2: return posicaoAtual + new Vector2(0, 1);  // Cima
+            case 3: return posicaoAtual + new Vector2(0, -1); // Baixo
+            default: return posicaoAtual;
         }
     }
     
-    private int EncontrarMelhorAcao(int s, int acoes, float[,] Q){
+    private bool EhPosicaoValida(Vector2 posicao, int altura, int largura) {
+        return posicao.x >= 0 && posicao.x < largura && posicao.y >= 0 && posicao.y < altura;
+    }
+    
+    private float CalcularRecompensa(TipoTile tipoTile) {
+        switch(tipoTile) {
+            case TipoTile.Bau:
+                return hasKey == 25 ? 10 : -5;
+            case TipoTile.Chave:
+                hasKey = 25;
+                return 2.5f;
+            case TipoTile.Espinho:
+                return -10;
+            case TipoTile.Normal:
+                return -1f;
+            case TipoTile.Bloqueado:
+                return float.NegativeInfinity;
+            default:
+                return -0.2f;
+        }
+    }
+    private int EncontrarMelhorAcao(int estadoAtual, int acoes, float[,] Q, int altura, int largura, Node[,] grade, Vector2 posicaoAtual) {
         int melhorAcao = 0;
-
-        for(int j = 0; j < acoes; j++){
-            if(Q[s, j] > Q[s, melhorAcao]){
-                melhorAcao = j;
+        float melhorValor = float.NegativeInfinity;
+    
+        for(int a = 0; a < acoes; a++) {
+            Vector2 destino = CalcularDestino(posicaoAtual, a);
+            
+            if (EhPosicaoValida(destino, altura, largura) && 
+                grade[(int)destino.y, (int)destino.x].tipoTile != TipoTile.Bloqueado) {
+                if (Q[estadoAtual, a] > melhorValor) {
+                    melhorValor = Q[estadoAtual, a];
+                    melhorAcao = a;
+                }
             }
         }
+        
         return melhorAcao;
-    }
-
-    private List<Node> GetVizinhos(Node node, Node[,] grade) { // Funcao auxiliar para achar os vizinhos
-        List<Node> vizinhos = new List<Node>();
-        int x = (int)node.posicao.x;
-        int y = (int)node.posicao.y;
-
-        // Checa se há vizinhos nas 4 direcoes
-        bool esquerda = x > 0;
-        bool direita = x < grade.GetLength(1) - 1;  // Updated to use correct dimension
-        bool cima = y < grade.GetLength(0) - 1;     // Updated to use correct dimension
-        bool baixo = y > 0;
-
-        bool reto = esquerda ^ baixo && esquerda ^ cima && direita ^ baixo && direita ^ cima;
-
-        //Horizontal/Vertical
-        if (esquerda) vizinhos.Add(grade[y, x - 1]); // Esquerda
-        if (direita) vizinhos.Add(grade[y, x + 1]); // Direita
-        if (baixo) vizinhos.Add(grade[y - 1, x]); // Baixo
-        if (cima) vizinhos.Add(grade[y + 1, x]); // Cima
-
-        //Diagonais
-        if (esquerda && cima) vizinhos.Add(grade[y + 1, x - 1]); // Esquerda-Cima
-        if (esquerda && baixo) vizinhos.Add(grade[y - 1, x - 1]); //Esquerda-Baixo
-        if (direita && cima) vizinhos.Add(grade[y + 1, x + 1]); //Direita-Cima
-        if (direita && baixo) vizinhos.Add(grade[y - 1, x + 1]); //Direita-Baixo
-        return vizinhos;
     }
 
     public void ResetarPosicaoResolvedor() {
         StopAllCoroutines();
         moverPorCaminhoCoroutine = null;
-        transform.position = (Vector3) GerenciadorGrade.Instance.posicaoInicio + GerenciadorGrade.Instance.transform.position;
+        
+        float tamTile = 1.0f;
+        
+        GerenciadorGrade gg = GerenciadorGrade.Instance;
+        Vector3 posicaoMundo = new Vector3(gg.posicaoInicio.x * tamTile, gg.posicaoInicio.y * tamTile, 0f);
+        
+        transform.position = posicaoMundo;
     }
 
-    private IEnumerator MoverParaPosicaoCoroutine(Vector3 posicaoAtual, Vector3 posicaoDestino) {
+    private IEnumerator MoverParaPosicaoCoroutine(Vector2 posicaoAtual, Vector2 posicaoDestino) {
+        GerenciadorGrade gg = GerenciadorGrade.Instance;
+        
+        float tamTile = 1.0f; 
+        
+        Vector3 posicaoMundoAtual = new Vector3(posicaoAtual.x * tamTile, posicaoAtual.y * tamTile, 0f) + gg.transform.position;
+        Vector3 posicaoMundoDestino = new Vector3(posicaoDestino.x * tamTile, posicaoDestino.y * tamTile, 0f) + gg.transform.position;
+        
+        
         float tempo = 0f;
-        float distancia = Vector3.Distance(posicaoAtual, posicaoDestino);
+        float distancia = Vector3.Distance(posicaoMundoAtual, posicaoMundoDestino);
 
         while (tempo < distancia / velocidade) {
             tempo += Time.deltaTime;
             float interpolacao = tempo / (distancia / velocidade);
-            transform.position = Vector3.Lerp(posicaoAtual, posicaoDestino, interpolacao);
+            transform.position = Vector3.Lerp(posicaoMundoAtual, posicaoMundoDestino, interpolacao);
             yield return null;
         }
-        GerenciadorGrade.Instance.posicaoAtual = posicaoDestino;
-        transform.position = posicaoDestino;
+        
+        gg.posicaoAtual = posicaoDestino;
+        transform.position = posicaoMundoDestino;
+    }
+
+    public void Acelerar(){
+        Time.timeScale = 5;
+    }
+    public void Desacelerar(){
+        Time.timeScale = 1;
+
     }
 }
