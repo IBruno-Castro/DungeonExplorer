@@ -34,7 +34,7 @@ public class GerenciadorGrade : MonoBehaviour {
     private float alturaOffset => (altura * tamanhoUnidade / -2) + tamanhoUnidade / 2;
 
     [SerializeField]
-    private List<TileData> tiles = new();
+    public List<TileData> tiles = new();
     [SerializeField]
     private List<TilePadraoData> tilesPadrao = new();
     // Soma das probabilidades de cada tipo de tile

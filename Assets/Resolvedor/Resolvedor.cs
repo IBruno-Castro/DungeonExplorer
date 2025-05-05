@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEditor;
+using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -18,6 +19,11 @@ public class Resolvedor : MonoBehaviour {
     [SerializeField] private float taxaDesconto = 0.5f;
     [SerializeField] private float epsilon = 0.8f;
     [SerializeField] private int episodios = 100;
+
+    [Header("Partículas")]
+    [SerializeField] private ParticleSystem particulasBau;
+
+    [SerializeField] private GameObject tileNormal;
 
     void Start(){
         ResetarPosicaoResolvedor();
@@ -78,8 +84,17 @@ public class Resolvedor : MonoBehaviour {
     
             bool objetivoAlcancado = false;
 
-            taxaAprendizado -= 0.05f;
-            epsilon -= 0.05f;
+            if(i % 5 == 0){
+                taxaAprendizado -= (taxaAprendizado - 0.05f) > 0 ? 0.05f : 0;
+                epsilon -= (epsilon - 0.05f) > 0 ? 0.05f : 0;
+
+
+                taxaAprendizado = Mathf.Clamp(taxaAprendizado, 0.01f, float.PositiveInfinity );
+                epsilon = Mathf.Clamp(epsilon, 0.05f, float.PositiveInfinity );
+
+            }
+
+            
             
             while(!objetivoAlcancado && passoAtual < maxPassos){
                 passoAtual++;
@@ -90,8 +105,10 @@ public class Resolvedor : MonoBehaviour {
                     List<int> acoesValidas = new List<int>();
                     for (int a = 0; a < acoes; a++) {
                         Vector2 target = CalcularDestino(gg.posicaoAtual, a);
+
+                        Debug.LogWarning(grade[(int)target.x, (int)target.y].tipoTile);
                         if (EhPosicaoValida(target, altura, largura) && 
-                            grade[(int)target.y, (int)target.x].tipoTile != TipoTile.Bloqueado) {
+                            grade[(int)target.x, (int)target.y].tipoTile != TipoTile.Bloqueado) {
                             acoesValidas.Add(a);
                         }
                     }
@@ -126,6 +143,7 @@ public class Resolvedor : MonoBehaviour {
                 if(grade[(int)destino.x, (int)destino.y].tipoTile == TipoTile.Chave && hasKey == 0){
                     hasKey = 25;
                     novoEstado = (int)(destino.y * largura + destino.x) + hasKey;
+                    gg.MudarTile((int)destino.x, (int)destino.y, tileNormal);
                     Debug.Log("Chave coletada!");
                 }
                 
@@ -144,6 +162,7 @@ public class Resolvedor : MonoBehaviour {
                 estadoAtual = novoEstado;
                 
                 if (objetivoAlcancado) {
+                    Instantiate(particulasBau, transform.position, transform.rotation);
                     Debug.Log($"Episódio {i+1} finalizado com sucesso! O agente encontrou o baú com a chave!");
                     break;
                 }
@@ -187,7 +206,7 @@ public class Resolvedor : MonoBehaviour {
                 if(hasKey == 0){
                     return 5f;
                 }
-                return -0.1f;
+                return -20f;
             case TipoTile.Espinho:
                 return -10; // Sempre deve dar recompensa negativa
             case TipoTile.Normal:

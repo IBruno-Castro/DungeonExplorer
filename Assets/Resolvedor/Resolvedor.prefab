@@ -102,3 +102,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   corAndado: {r: 0.3537736, g: 1, b: 0.600938, a: 1}
   velocidade: 10
+  estados: 50
+  acoes: 4
+  taxaAprendizado: 0.9
+  taxaDesconto: 0.5
+  epsilon: 0.8
+  episodios: 100
